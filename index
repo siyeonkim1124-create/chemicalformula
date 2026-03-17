@@ -1,0 +1,753 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>화학식 메모리게임</title>
+<link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@400;700;900&family=Orbitron:wght@700;900&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg: #f0f9ff;
+    --surface: #ffffff;
+    --accent:  #0ea5e9;
+    --accent2: #6366f1;
+    --accent3: #10b981;
+    --gold:    #f59e0b;
+    --text:    #0f172a;
+    --muted:   #64748b;
+    --border:  rgba(0,0,0,0.08);
+    --cw: 76px;
+    --ch: calc(var(--cw) * 87 / 56);
+  }
+  @media (max-width: 700px)  { :root { --cw: 62px; } }
+  @media (max-width: 560px)  { :root { --cw: 52px; } }
+  @media (max-width: 460px)  { :root { --cw: 42px; } }
+  @media (max-width: 380px)  { :root { --cw: 35px; } }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: 'Noto Sans KR', sans-serif;
+    min-height: 100vh;
+    overflow-x: hidden;
+  }
+  body::before {
+    content: '';
+    position: fixed; inset: 0; pointer-events: none; z-index: 0;
+    background:
+      radial-gradient(ellipse at 15% 40%, rgba(14,165,233,0.10) 0%, transparent 55%),
+      radial-gradient(ellipse at 85% 20%, rgba(99,102,241,0.10) 0%, transparent 55%),
+      radial-gradient(ellipse at 60% 80%, rgba(16,185,129,0.08) 0%, transparent 50%);
+  }
+
+  /* ── HEADER ── */
+  header {
+    position: sticky; top: 0; z-index: 100;
+    display: flex; align-items: center; justify-content: space-between;
+    padding: 12px 24px;
+    background: rgba(240,249,255,0.92);
+    backdrop-filter: blur(12px);
+    border-bottom: 1px solid rgba(14,165,233,0.15);
+    box-shadow: 0 1px 12px rgba(14,165,233,0.08);
+  }
+  .header-left { display: flex; flex-direction: column; gap: 4px; }
+  .game-title {
+    font-family: 'Orbitron', sans-serif;
+    font-size: clamp(14px, 2.5vw, 21px); font-weight: 900;
+    background: linear-gradient(90deg, #0ea5e9, #6366f1, #10b981);
+    -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text;
+  }
+  .sub-info {
+    display: flex; gap: 14px; align-items: center;
+    font-size: 12px; color: var(--muted);
+    flex-wrap: nowrap; white-space: nowrap; overflow: hidden;
+  }
+  .stat-val { color: var(--text); font-weight: 700; }
+  #timer-display {
+    font-family: 'Orbitron', sans-serif;
+    font-size: 13px; color: var(--accent2); font-weight: 700;
+  }
+  .header-right { display: flex; gap: 10px; align-items: center; }
+  .btn-trophy {
+    width: 40px; height: 40px; border-radius: 11px;
+    background: linear-gradient(135deg, #d97706, #f59e0b);
+    border: none; cursor: pointer;
+    display: flex; align-items: center; justify-content: center; font-size: 18px;
+    box-shadow: 0 0 12px rgba(245,158,11,0.35);
+    transition: transform 0.2s, box-shadow 0.2s;
+  }
+  .btn-trophy:hover { transform: scale(1.1); box-shadow: 0 0 20px rgba(245,158,11,0.6); }
+
+  main { position: relative; z-index: 1; }
+
+  /* ── START SCREEN ── */
+  #start-screen {
+    display: flex; flex-direction: column; align-items: center; justify-content: center;
+    min-height: calc(100vh - 66px); gap: 24px; padding: 24px;
+    animation: fadeUp 0.6s ease;
+  }
+  .big-title {
+    font-family: 'Orbitron', sans-serif;
+    font-size: clamp(24px, 5vw, 50px); font-weight: 900;
+    text-align: center; line-height: 1.2;
+    background: linear-gradient(135deg, #0ea5e9 0%, #6366f1 50%, #10b981 100%);
+    -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text;
+  }
+  .desc { font-size: 14px; color: var(--muted); text-align: center; line-height: 1.9; max-width: 420px; }
+  .desc strong { color: var(--accent2); }
+
+  .info-box {
+    background: white; border: 1px solid rgba(14,165,233,0.2);
+    border-radius: 18px; padding: 18px 24px; max-width: 380px; width: 100%;
+    box-shadow: 0 4px 20px rgba(14,165,233,0.08);
+  }
+  .info-box .ib-title {
+    font-family: 'Orbitron', sans-serif; font-size: 11px; font-weight: 900;
+    color: var(--accent); letter-spacing: 0.12em; margin-bottom: 10px;
+  }
+  .info-box .ib-body { font-size: 13px; color: var(--muted); line-height: 1.8; }
+  .info-box .ib-body b { color: var(--text); }
+
+  .nick-wrap { display: flex; flex-direction: column; align-items: center; gap: 8px; }
+  .nick-wrap label { font-size: 13px; color: var(--muted); }
+  .nick-input {
+    background: white; border: 1.5px solid rgba(14,165,233,0.4); border-radius: 12px;
+    padding: 11px 20px; color: var(--text); font-size: 15px;
+    font-family: 'Noto Sans KR', sans-serif; outline: none; width: 220px; text-align: center;
+    transition: border-color 0.2s, box-shadow 0.2s;
+    box-shadow: 0 2px 8px rgba(14,165,233,0.08);
+  }
+  .nick-input:focus { border-color: var(--accent); box-shadow: 0 0 14px rgba(14,165,233,0.25); }
+  .nick-input::placeholder { color: #cbd5e1; }
+
+  .btn-start {
+    background: linear-gradient(135deg, #0284c7, #0ea5e9, #38bdf8);
+    border: none; cursor: pointer; padding: 15px 52px; border-radius: 100px;
+    font-family: 'Noto Sans KR', sans-serif; font-size: 20px; font-weight: 700; color: white;
+    letter-spacing: 0.06em; box-shadow: 0 0 24px rgba(14,165,233,0.45);
+    transition: transform 0.2s, box-shadow 0.2s; position: relative; overflow: hidden;
+  }
+  .btn-start::after { content:''; position:absolute; inset:0; background:linear-gradient(135deg,rgba(255,255,255,0.18),transparent); }
+  .btn-start:hover { transform: scale(1.05); box-shadow: 0 0 40px rgba(14,165,233,0.65); }
+  .btn-start:active { transform: scale(0.97); }
+
+  /* ── GAME SCREEN ── */
+  #game-screen { display: none; flex-direction: column; align-items: center; padding: 14px; }
+  #play-area-wrap {
+    width: 100%; overflow-x: auto; -webkit-overflow-scrolling: touch;
+    display: flex; justify-content: center; padding: 4px 0;
+  }
+  #play-area { display: grid; gap: 7px; justify-content: center; padding: 8px; }
+
+  /* ── CARD SLOT ── */
+  .card-slot {
+    width: var(--cw); height: var(--ch);
+    perspective: 600px; cursor: pointer; flex-shrink: 0;
+    touch-action: manipulation; -webkit-tap-highlight-color: transparent;
+  }
+  .card-slot.matched { cursor: default; pointer-events: none; }
+  .card-inner {
+    width: 100%; height: 100%; position: relative;
+    transform-style: preserve-3d;
+    transition: transform 0.45s cubic-bezier(0.4,0.2,0.2,1);
+    border-radius: 10px;
+  }
+  .card-slot.flipped .card-inner,
+  .card-slot.matched  .card-inner { transform: rotateY(180deg); }
+
+  .card-face {
+    position: absolute; inset: 0; border-radius: 10px;
+    backface-visibility: hidden; -webkit-backface-visibility: hidden;
+    display: flex; align-items: center; justify-content: center; overflow: hidden;
+  }
+
+  /* 뒷면 */
+  .card-back {
+    background: linear-gradient(135deg, #bfdbfe, #ddd6fe);
+    border: 1.5px solid rgba(99,102,241,0.25);
+    box-shadow: 0 3px 10px rgba(99,102,241,0.15);
+  }
+  .back-svg { position: absolute; inset: 0; width: 100%; height: 100%; opacity: 0.6; }
+
+  /* 앞면 — 화학식 카드 (파란 계열) */
+  .card-formula {
+    background: linear-gradient(160deg, #e0f2fe, #f0f9ff);
+    border: 1.5px solid rgba(14,165,233,0.4);
+    transform: rotateY(180deg);
+    flex-direction: column; gap: 3px;
+    box-shadow: 0 3px 12px rgba(14,165,233,0.15);
+  }
+  .card-slot.matched .card-formula {
+    border-color: var(--gold);
+    box-shadow: 0 0 10px rgba(245,158,11,0.4);
+    background: linear-gradient(160deg, #fef9c3, #fefce8);
+  }
+
+  /* 앞면 — 이름/그림 카드 (보라/초록 계열) */
+  .card-name {
+    background: linear-gradient(160deg, #ede9fe, #f5f3ff);
+    border: 1.5px solid rgba(99,102,241,0.35);
+    transform: rotateY(180deg);
+    flex-direction: column; gap: 3px;
+    box-shadow: 0 3px 12px rgba(99,102,241,0.12);
+  }
+  .card-slot.matched .card-name {
+    border-color: var(--gold);
+    box-shadow: 0 0 10px rgba(245,158,11,0.4);
+    background: linear-gradient(160deg, #fef9c3, #fefce8);
+  }
+
+  /* 화학식 텍스트 (위·아래 첨자 포함) */
+  .formula-text {
+    font-family: 'Orbitron', sans-serif; font-weight: 900;
+    color: #0369a1; text-align: center; line-height: 1.1;
+    padding: 0 3px;
+  }
+  .formula-text sup { font-size: 0.6em; vertical-align: super; }
+  .formula-text sub { font-size: 0.6em; vertical-align: sub; }
+
+  .name-text {
+    font-weight: 700; color: #3730a3; text-align: center;
+    padding: 0 5px; line-height: 1.3;
+  }
+
+  /* 분자 모형 SVG */
+  .molecule-svg { width: 80%; height: 70%; }
+
+  /* 카드 크기별 폰트 자동 조정 */
+  .formula-text   { font-size: clamp(11px, 3.5vw, 18px); }
+  .name-text      { font-size: clamp(9px,  2.5vw, 13px); }
+  @media (max-width: 460px) { .formula-text { font-size: 11px; } .name-text { font-size: 8px; } }
+  @media (max-width: 380px) { .formula-text { font-size: 9px; }  .name-text { font-size: 7px; } }
+
+  /* ── WIN / CLEAR OVERLAY ── */
+  #win-banner {
+    position: fixed; inset: 0; z-index: 150;
+    display: flex; flex-direction: column; align-items: center; justify-content: center;
+    background: rgba(240,249,255,0.96); backdrop-filter: blur(10px);
+    gap: 18px; padding: 24px;
+  }
+  #win-banner.hidden { display: none; }
+  .win-title {
+    font-family: 'Orbitron', sans-serif; font-size: clamp(26px,6vw,52px); font-weight: 900;
+    background: linear-gradient(135deg, #0ea5e9, #6366f1);
+    -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text;
+    text-align: center;
+  }
+  .win-stat-row {
+    display: flex; gap: 16px; flex-wrap: wrap; justify-content: center;
+  }
+  .win-stat-box {
+    background: white; border: 1px solid rgba(14,165,233,0.2);
+    border-radius: 14px; padding: 14px 22px; text-align: center;
+    box-shadow: 0 4px 16px rgba(14,165,233,0.10);
+    min-width: 130px;
+  }
+  .win-stat-label { font-size: 10px; color: var(--muted); text-transform: uppercase; letter-spacing: 0.1em; margin-bottom: 5px; }
+  .win-stat-val   { font-size: 22px; font-weight: 900; font-family: 'Orbitron', sans-serif; color: var(--accent2); }
+  .win-sub { font-size: 13px; color: var(--muted); }
+  .win-btns { display: flex; gap: 10px; flex-wrap: wrap; justify-content: center; margin-top: 6px; }
+
+  .btn-blue {
+    background: linear-gradient(135deg, #0284c7, #0ea5e9);
+    border: none; cursor: pointer; padding: 12px 32px; border-radius: 100px;
+    font-family: 'Noto Sans KR', sans-serif; font-size: 16px; font-weight: 700; color: white;
+    box-shadow: 0 0 16px rgba(14,165,233,0.35); transition: transform 0.2s;
+  }
+  .btn-blue:hover { transform: scale(1.05); }
+  .btn-outline {
+    background: white; border: 1.5px solid rgba(14,165,233,0.3); border-radius: 100px;
+    color: var(--accent); font-family: 'Noto Sans KR', sans-serif; font-size: 16px; font-weight: 700;
+    padding: 12px 32px; cursor: pointer; transition: background 0.2s;
+  }
+  .btn-outline:hover { background: #f0f9ff; }
+
+  /* ── LEADERBOARD ── */
+  .overlay {
+    position: fixed; inset: 0; z-index: 200;
+    display: flex; align-items: center; justify-content: center;
+    background: rgba(15,23,42,0.5); backdrop-filter: blur(8px);
+  }
+  .overlay.hidden { display: none; }
+  .modal {
+    background: white; border: 1px solid rgba(14,165,233,0.15);
+    border-radius: 24px; padding: 32px 34px;
+    max-width: 460px; width: 92%; max-height: 82vh; overflow-y: auto;
+    box-shadow: 0 24px 60px rgba(15,23,42,0.15);
+  }
+  .modal h2 {
+    font-family: 'Orbitron', sans-serif; font-size: 19px; font-weight: 900;
+    margin-bottom: 20px; text-align: center;
+    background: linear-gradient(90deg, #0ea5e9, #6366f1);
+    -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text;
+  }
+  .lb-list { list-style: none; }
+  .lb-item {
+    display: flex; align-items: center; gap: 12px;
+    padding: 10px 12px; border-radius: 11px; margin-bottom: 6px;
+    background: #f8fafc; border: 1px solid #e2e8f0;
+  }
+  .lb-rank {
+    width: 26px; height: 26px; border-radius: 7px; flex-shrink: 0;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 12px; font-weight: 900; background: #e2e8f0; color: #64748b;
+  }
+  .lb-rank.r1 { background: linear-gradient(135deg,#b45309,#f59e0b); color: white; }
+  .lb-rank.r2 { background: linear-gradient(135deg,#475569,#94a3b8); color: white; }
+  .lb-rank.r3 { background: linear-gradient(135deg,#7c3aed,#a78bfa); color: white; }
+  .lb-name  { flex: 1; font-weight: 700; font-size: 14px; color: var(--text); }
+  .lb-time  { font-size: 12px; color: var(--accent2); font-weight: 700; font-family: 'Orbitron', sans-serif; }
+  .lb-plays { font-size: 11px; color: var(--muted); }
+  .lb-empty { text-align: center; color: var(--muted); padding: 22px 0; font-size: 13px; }
+  .btn-close {
+    display: block; margin: 20px auto 0;
+    background: #f1f5f9; border: 1px solid #e2e8f0; border-radius: 11px;
+    color: var(--text); font-family: 'Noto Sans KR', sans-serif; font-size: 14px; font-weight: 700;
+    padding: 9px 28px; cursor: pointer; transition: background 0.2s;
+  }
+  .btn-close:hover { background: #e2e8f0; }
+
+  /* ── ANIMATIONS ── */
+  @keyframes fadeUp { from{opacity:0;transform:translateY(12px)} to{opacity:1;transform:translateY(0)} }
+  @keyframes cardIn { from{opacity:0;transform:scale(0.7) rotateY(90deg)} to{opacity:1;transform:scale(1) rotateY(0)} }
+  @keyframes shake  { 0%,100%{transform:translateX(0)} 20%{transform:translateX(-6px)} 40%{transform:translateX(6px)} 60%{transform:translateX(-4px)} 80%{transform:translateX(4px)} }
+
+  .card-appear { animation: cardIn 0.4s ease both; }
+  .do-shake    { animation: shake 0.4s ease; }
+
+  @media (max-width: 480px) {
+    #start-screen { gap: 18px; padding: 16px; }
+    .big-title { font-size: clamp(20px, 8vw, 34px); }
+    .btn-start { padding: 13px 36px; font-size: 18px; }
+    .nick-input { width: 190px; }
+    .modal { padding: 22px 18px; }
+    .info-box { padding: 14px 16px; }
+  }
+</style>
+</head>
+<body>
+
+<!-- ── HEADER ── -->
+<header>
+  <div class="header-left">
+    <div class="game-title">🧪 CHEM MEMORY</div>
+    <div class="sub-info" id="header-info" style="display:none">
+      <span>매칭: <span class="stat-val" id="h-matched">0</span>/15</span>
+      <span id="timer-display">00:00</span>
+    </div>
+  </div>
+  <div class="header-right">
+    <button class="btn-trophy" id="btn-trophy" title="랭킹">🏆</button>
+  </div>
+</header>
+
+<main>
+  <!-- START SCREEN -->
+  <div id="start-screen">
+    <div class="big-title">화학식<br>메모리게임</div>
+    <p class="desc">
+      44가지 화학식 풀에서 <strong>15쌍을 무작위</strong>로 선정!<br>
+      매번 다른 카드로 새로운 도전을 즐기세요.
+    </p>
+    <div class="info-box">
+      <div class="ib-title">🃏 게임 방법</div>
+      <div class="ib-body">
+        <b>30장</b>의 카드가 뒤집혀 있어요.<br>
+        화학식 카드와 이름(또는 분자 모형) 카드를 짝지어 보세요.<br>
+        짝이 맞으면 카드가 제자리에 고정돼요!
+      </div>
+    </div>
+    <div class="nick-wrap">
+      <label for="nick-input">닉네임 입력</label>
+      <input class="nick-input" id="nick-input" type="text" placeholder="닉네임을 입력하세요" maxlength="12">
+    </div>
+    <button class="btn-start" id="btn-start">시 작</button>
+  </div>
+
+  <!-- GAME SCREEN -->
+  <div id="game-screen">
+    <div id="play-area-wrap">
+      <div id="play-area"></div>
+    </div>
+  </div>
+</main>
+
+<!-- WIN BANNER -->
+<div id="win-banner" class="hidden">
+  <div style="font-size:52px">🎉</div>
+  <div class="win-title">완성!</div>
+  <p class="win-sub">15쌍을 모두 찾았습니다!</p>
+  <div class="win-stat-row">
+    <div class="win-stat-box">
+      <div class="win-stat-label">걸린 시간</div>
+      <div class="win-stat-val" id="w-time">--</div>
+    </div>
+  </div>
+  <div class="win-btns">
+    <button class="btn-blue"    id="btn-again">다시 하기</button>
+    <button class="btn-outline" id="btn-win-rank">랭킹 보기</button>
+  </div>
+</div>
+
+<!-- LEADERBOARD -->
+<div class="overlay hidden" id="lb-overlay">
+  <div class="modal">
+    <h2>🏆 명예의 전당</h2>
+    <ul class="lb-list" id="lb-list"></ul>
+    <button class="btn-close" id="close-lb">닫기</button>
+  </div>
+</div>
+
+<script>
+/* ══════════════════════════════════════════════════
+   데이터: 44쌍
+   type: 'formula' | 'name' | 'molecule'
+   formula 카드 → HTML 문자열 (sup/sub 포함)
+   name 카드    → 한글 이름
+   molecule 카드→ SVG inline string
+══════════════════════════════════════════════════ */
+
+/* 분자 모형 SVG 헬퍼 */
+function mol2(label, r, color, strokeColor) {
+  // 두 원이 겹친 이원자 분자
+  const cx1 = 50 - r * 0.55, cx2 = 50 + r * 0.55, cy = 54;
+  return `<svg viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg" class="molecule-svg">
+    <circle cx="${cx1}" cy="${cy}" r="${r}" fill="${color}" stroke="${strokeColor}" stroke-width="1.8"/>
+    <circle cx="${cx2}" cy="${cy}" r="${r}" fill="${color}" stroke="${strokeColor}" stroke-width="1.8"/>
+    <text x="${cx1}" y="${cy+1}" text-anchor="middle" dominant-baseline="middle"
+      font-family="Orbitron,monospace" font-weight="900" font-size="${r*0.72}" fill="white">${label}</text>
+    <text x="${cx2}" y="${cy+1}" text-anchor="middle" dominant-baseline="middle"
+      font-family="Orbitron,monospace" font-weight="900" font-size="${r*0.72}" fill="white">${label}</text>
+  </svg>`;
+}
+
+const MOL_H2  = mol2('H',  16, '#60a5fa', '#2563eb');   // 작은 파랑
+const MOL_O2  = mol2('O',  22, '#f87171', '#dc2626');   // 중간 빨강
+const MOL_N2  = mol2('N',  21, '#818cf8', '#4338ca');   // 중간 보라
+const MOL_CL2 = mol2('Cl', 27, '#4ade80', '#16a34a');   // 큰 초록
+
+/* 전체 44쌍 풀 */
+const POOL = [
+  // ── 분자 모형 4쌍
+  { id:'h2',   fHtml:'H<sub>2</sub>',           nameHtml:'<span class="name-text">수소 분자</span>',  nameSvg: MOL_H2,  hasMol:true },
+  { id:'o2',   fHtml:'O<sub>2</sub>',           nameHtml:'<span class="name-text">산소 분자</span>',  nameSvg: MOL_O2,  hasMol:true },
+  { id:'n2',   fHtml:'N<sub>2</sub>',           nameHtml:'<span class="name-text">질소 분자</span>',  nameSvg: MOL_N2,  hasMol:true },
+  { id:'cl2',  fHtml:'Cl<sub>2</sub>',          nameHtml:'<span class="name-text">염소 분자</span>',  nameSvg: MOL_CL2, hasMol:true },
+
+  // ── 분자/화합물
+  { id:'h2o',     fHtml:'H<sub>2</sub>O',         name:'물' },
+  { id:'h2o2',    fHtml:'H<sub>2</sub>O<sub>2</sub>', name:'과산화 수소' },
+  { id:'co2',     fHtml:'CO<sub>2</sub>',          name:'이산화 탄소' },
+  { id:'nh3',     fHtml:'NH<sub>3</sub>',          name:'암모니아' },
+  { id:'ch4',     fHtml:'CH<sub>4</sub>',          name:'메테인' },
+  { id:'hcl',     fHtml:'HCl',                     name:'염화 수소' },
+  { id:'co',      fHtml:'CO',                      name:'일산화 탄소' },
+  { id:'o3',      fHtml:'O<sub>3</sub>',           name:'오존' },
+  { id:'nacl',    fHtml:'NaCl',                    name:'염화 나트륨' },
+  { id:'nahco3',  fHtml:'NaHCO<sub>3</sub>',       name:'탄산수소 나트륨' },
+
+  // ── 원소 단체
+  { id:'c',   fHtml:'C',   name:'탄소' },
+  { id:'cu',  fHtml:'Cu',  name:'구리' },
+  { id:'fe',  fHtml:'Fe',  name:'철' },
+  { id:'mg',  fHtml:'Mg',  name:'마그네슘' },
+  { id:'ag',  fHtml:'Ag',  name:'은' },
+  { id:'hg',  fHtml:'Hg',  name:'수은' },
+  { id:'mn',  fHtml:'Mn',  name:'망가니즈' },
+  { id:'i2',  fHtml:'I<sub>2</sub>',  name:'아이오딘' },
+  { id:'au',  fHtml:'Au',  name:'금' },
+  { id:'pb',  fHtml:'Pb',  name:'납' },
+
+  // ── 양이온
+  { id:'hion',    fHtml:'H<sup>+</sup>',             name:'수소 이온' },
+  { id:'mgion',   fHtml:'Mg<sup>2+</sup>',            name:'마그네슘 이온' },
+  { id:'nh4ion',  fHtml:'NH<sub>4</sub><sup>+</sup>', name:'암모늄 이온' },
+  { id:'naion',   fHtml:'Na<sup>+</sup>',             name:'나트륨 이온' },
+  { id:'agion',   fHtml:'Ag<sup>+</sup>',             name:'은 이온' },
+  { id:'caion',   fHtml:'Ca<sup>2+</sup>',            name:'칼슘 이온' },
+  { id:'pbion',   fHtml:'Pb<sup>2+</sup>',            name:'납 이온' },
+  { id:'kion',    fHtml:'K<sup>+</sup>',              name:'칼륨 이온' },
+  { id:'fe2ion',  fHtml:'Fe<sup>2+</sup>',            name:'철 이온' },
+  { id:'cuion',   fHtml:'Cu<sup>2+</sup>',            name:'구리 이온' },
+  { id:'baion',   fHtml:'Ba<sup>2+</sup>',            name:'바륨 이온' },
+
+  // ── 음이온
+  { id:'clion',   fHtml:'Cl<sup>-</sup>',              name:'염화 이온' },
+  { id:'oion',    fHtml:'O<sup>2-</sup>',              name:'산화 이온' },
+  { id:'ohion',   fHtml:'OH<sup>-</sup>',              name:'수산화 이온' },
+  { id:'sion',    fHtml:'S<sup>2-</sup>',              name:'황화 이온' },
+  { id:'no3ion',  fHtml:'NO<sub>3</sub><sup>-</sup>',  name:'질산 이온' },
+  { id:'iion',    fHtml:'I<sup>-</sup>',               name:'아이오딘화 이온' },
+  { id:'hco3ion', fHtml:'HCO<sub>3</sub><sup>-</sup>', name:'탄산 이온' },
+  { id:'so4ion',  fHtml:'SO<sub>4</sub><sup>2-</sup>', name:'황산 이온' },
+  { id:'fion',    fHtml:'F<sup>-</sup>',               name:'플루오린화 이온' },
+];
+
+/* ══════════════════════════════════════════════════
+   게임 상태
+══════════════════════════════════════════════════ */
+let cards = [], openIds = [], matchedSet = new Set();
+let plays = 0, locked = false;
+let timerInterval = null, startTime = null, elapsed = 0;
+let nickname = '';
+
+function shuffle(arr) {
+  const a = [...arr];
+  for (let i = a.length-1; i > 0; i--) {
+    const j = Math.floor(Math.random()*(i+1));
+    [a[i],a[j]] = [a[j],a[i]];
+  }
+  return a;
+}
+function fmt(s) {
+  if (s == null) return '--:--';
+  return `${Math.floor(s/60).toString().padStart(2,'0')}:${Math.floor(s%60).toString().padStart(2,'0')}`;
+}
+function esc(s) {
+  return String(s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+}
+
+/* ── 타이머 ── */
+function startTimer() {
+  if (startTime !== null) return;
+  startTime = Date.now() - elapsed*1000;
+  timerInterval = setInterval(() => {
+    elapsed = (Date.now()-startTime)/1000;
+    document.getElementById('timer-display').textContent = fmt(elapsed);
+  }, 200);
+}
+function stopTimer() {
+  clearInterval(timerInterval);
+  if (startTime) elapsed = (Date.now()-startTime)/1000;
+}
+function resetTimer() {
+  clearInterval(timerInterval);
+  timerInterval = null; startTime = null; elapsed = 0;
+  document.getElementById('timer-display').textContent = '00:00';
+}
+
+/* ── 뒷면 SVG ── */
+function backSVG() {
+  return `<svg class="back-svg" viewBox="0 0 76 118" xmlns="http://www.w3.org/2000/svg">
+    <defs>
+      <pattern id="dots" x="0" y="0" width="12" height="12" patternUnits="userSpaceOnUse">
+        <circle cx="6" cy="6" r="1.8" fill="rgba(99,102,241,0.3)"/>
+      </pattern>
+    </defs>
+    <rect width="76" height="118" fill="url(#dots)"/>
+    <text x="38" y="62" text-anchor="middle" dominant-baseline="middle"
+      font-size="26" fill="rgba(99,102,241,0.25)" font-weight="bold">🧪</text>
+  </svg>`;
+}
+
+/* ── 카드 DOM 생성 ── */
+function makeCard(c) {
+  const slot = document.createElement('div');
+  slot.className = 'card-slot card-appear';
+  slot.dataset.id = c.id;
+
+  const inner = document.createElement('div');
+  inner.className = 'card-inner';
+
+  // 뒷면
+  const back = document.createElement('div');
+  back.className = 'card-face card-back';
+  back.innerHTML = backSVG();
+
+  // 앞면
+  const front = document.createElement('div');
+
+  if (c.type === 'formula') {
+    front.className = 'card-face card-formula';
+    front.innerHTML = `<span class="formula-text">${c.fHtml}</span>`;
+  } else if (c.type === 'molecule') {
+    front.className = 'card-face card-name';
+    front.innerHTML = c.molSvg + `<span class="name-text" style="font-size:clamp(7px,1.5vw,10px);color:#3730a3;font-weight:700;">${c.label}</span>`;
+  } else {
+    front.className = 'card-face card-name';
+    front.innerHTML = `<span class="name-text">${c.name}</span>`;
+  }
+
+  inner.appendChild(back);
+  inner.appendChild(front);
+  slot.appendChild(inner);
+  slot.addEventListener('click', () => onCardClick(c.id));
+  return slot;
+}
+
+/* ── 게임 초기화: 44쌍 중 15쌍 랜덤 선정 ── */
+function initGame() {
+  const selected = shuffle(POOL).slice(0, 15);
+
+  const raw = [];
+  selected.forEach(item => {
+    // 화학식 카드
+    raw.push({
+      id: `f-${item.id}`,
+      pairId: `n-${item.id}`,
+      type: 'formula',
+      fHtml: item.fHtml,
+    });
+    // 이름/모형 카드
+    if (item.hasMol) {
+      raw.push({
+        id: `n-${item.id}`,
+        pairId: `f-${item.id}`,
+        type: 'molecule',
+        molSvg: item.nameSvg,
+        label: item.nameHtml.replace(/<[^>]+>/g,''),  // strip tags for label
+      });
+    } else {
+      raw.push({
+        id: `n-${item.id}`,
+        pairId: `f-${item.id}`,
+        type: 'name',
+        name: item.name,
+      });
+    }
+  });
+
+  cards = shuffle(raw);
+  openIds = []; matchedSet = new Set();
+  plays = 0; locked = false;
+  resetTimer();
+
+  const pa = document.getElementById('play-area');
+  pa.innerHTML = '';
+  pa.style.gridTemplateColumns = `repeat(6, var(--cw))`;
+
+  cards.forEach((c, i) => {
+    const el = makeCard(c);
+    el.style.animationDelay = (i * 0.035) + 's';
+    pa.appendChild(el);
+  });
+
+  document.getElementById('h-matched').textContent = '0';
+  document.getElementById('header-info').style.display = 'flex';
+  document.getElementById('start-screen').style.display = 'none';
+  document.getElementById('game-screen').style.display  = 'flex';
+  document.getElementById('win-banner').classList.add('hidden');
+}
+
+/* ── 카드 클릭 ── */
+function onCardClick(id) {
+  if (locked) return;
+  if (matchedSet.has(id)) return;
+  if (openIds.includes(id)) return;
+  if (openIds.length >= 2) return;
+
+  startTimer();
+
+  const slot = document.querySelector(`.card-slot[data-id="${id}"]`);
+  slot.classList.add('flipped');
+  openIds.push(id);
+
+  if (openIds.length < 2) return;
+
+  plays++;
+  locked = true;
+
+  const [id1, id2] = openIds;
+  const c1 = cards.find(c => c.id === id1);
+  const c2 = cards.find(c => c.id === id2);
+  const isMatch = c1 && c2 && c1.pairId === id2 && c2.pairId === id1;
+
+  if (isMatch) {
+    setTimeout(() => {
+      [id1, id2].forEach(id => {
+        const s = document.querySelector(`.card-slot[data-id="${id}"]`);
+        s.classList.remove('flipped');
+        s.classList.add('matched');
+      });
+      matchedSet.add(id1);
+      matchedSet.add(id2);
+      openIds = [];
+      locked  = false;
+      document.getElementById('h-matched').textContent = matchedSet.size / 2;
+
+      if (matchedSet.size === 30) {
+        stopTimer();
+        saveScore(nickname, elapsed, plays);
+        setTimeout(showWin, 500);
+      }
+    }, 600);
+  } else {
+    const s1 = document.querySelector(`.card-slot[data-id="${id1}"]`);
+    const s2 = document.querySelector(`.card-slot[data-id="${id2}"]`);
+    s1.classList.add('do-shake');
+    s2.classList.add('do-shake');
+    setTimeout(() => {
+      s1.classList.remove('flipped','do-shake');
+      s2.classList.remove('flipped','do-shake');
+      openIds = [];
+      locked  = false;
+    }, 900);
+  }
+}
+
+/* ── 완성 ── */
+function showWin() {
+  document.getElementById('w-time').textContent = fmt(elapsed);
+  document.getElementById('win-banner').classList.remove('hidden');
+}
+
+/* ── 랭킹 ── */
+function saveScore(nick, time, p) {
+  let lb = getLB();
+  lb.push({ nick: nick||'익명', time, plays:p, date: new Date().toLocaleDateString('ko-KR') });
+  lb.sort((a,b) => a.time - b.time);
+  localStorage.setItem('chem_lb', JSON.stringify(lb.slice(0,50)));
+}
+function getLB() {
+  try { return JSON.parse(localStorage.getItem('chem_lb')) || []; } catch { return []; }
+}
+function renderLB() {
+  const lb = getLB();
+  const list = document.getElementById('lb-list');
+  if (!lb.length) {
+    list.innerHTML = '<li class="lb-empty">아직 기록이 없어요!</li>';
+    return;
+  }
+  list.innerHTML = lb.slice(0,20).map((r,i) => `
+    <li class="lb-item">
+      <div class="lb-rank ${i===0?'r1':i===1?'r2':i===2?'r3':''}">${i+1}</div>
+      <div class="lb-name">${esc(r.nick)}</div>
+      <div class="lb-time">${fmt(r.time)}</div>
+      <div class="lb-plays">${r.plays}회 · ${r.date}</div>
+    </li>`).join('');
+}
+
+/* ── 이벤트 ── */
+document.getElementById('btn-start').addEventListener('click', () => {
+  nickname = document.getElementById('nick-input').value.trim() || '익명';
+  initGame();
+});
+document.getElementById('nick-input').addEventListener('keydown', e => {
+  if (e.key === 'Enter') document.getElementById('btn-start').click();
+});
+document.getElementById('btn-again').addEventListener('click', () => {
+  document.getElementById('win-banner').classList.add('hidden');
+  document.getElementById('game-screen').style.display = 'none';
+  document.getElementById('start-screen').style.display = 'flex';
+  document.getElementById('header-info').style.display  = 'none';
+});
+document.getElementById('btn-trophy').addEventListener('click', () => {
+  renderLB();
+  document.getElementById('lb-overlay').classList.remove('hidden');
+});
+document.getElementById('btn-win-rank').addEventListener('click', () => {
+  document.getElementById('win-banner').classList.add('hidden');
+  renderLB();
+  document.getElementById('lb-overlay').classList.remove('hidden');
+});
+document.getElementById('close-lb').addEventListener('click', () =>
+  document.getElementById('lb-overlay').classList.add('hidden'));
+document.getElementById('lb-overlay').addEventListener('click', e => {
+  if (e.target === document.getElementById('lb-overlay'))
+    document.getElementById('lb-overlay').classList.add('hidden');
+});
+</script>
+</body>
+</html>
